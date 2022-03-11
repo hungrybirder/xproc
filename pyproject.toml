@@ -1,14 +1,28 @@
 [tool.poetry]
 name = "xproc"
 version = "1.0.0"
-description = ""
+description = "Linux Proc File System Snooper"
 authors = ["liyong <hungrybirder@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/hungrybirder/xproc"
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: Linux",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10"
+]
 
 [tool.poetry.dependencies]
 python = "^3.6"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
+
+# [tool.poetry.scripts]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
