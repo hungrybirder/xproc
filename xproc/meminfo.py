@@ -8,7 +8,6 @@ from typing import Dict, List
 import logging
 
 from xproc.value import (
-    EmptyIntUnitValue,
     IntUnitValue,
     parse_int_unit_val,
     parse_int_val,
@@ -16,6 +15,7 @@ from xproc.value import (
     DEF_FMT_2,
     Attr,
     EmptyAttr,
+    current_time_attr,
 )
 
 logger = logging.getLogger("xproc.meminfo")
@@ -136,6 +136,10 @@ class MemoryInfo:
             attr.set_value_fmt(fmt)
             attrs[name] = attr
         self._attrs = attrs
+        kernel = self._get_kernel_used_mem()
+        self._attrs[kernel.name] = kernel
+        user = self._get_user_used_mem()
+        self._attrs[user.name] = user
 
     def _get_attr(self, name: str) -> Attr:
         if name not in self._attrs:
@@ -152,7 +156,7 @@ class MemoryInfo:
     def names(self) -> List[str]:
         return list(self._attrs.keys())
 
-    def get_kernel_used_mem(self) -> IntUnitValue:
+    def _get_kernel_used_mem(self) -> Attr:
         """
         From http://linuxperf.com/?cat=7
         Kernel Used Memory includes:
@@ -185,13 +189,13 @@ class MemoryInfo:
         for val in used:
             if isinstance(val, int):
                 kernel_used += val
-        ret_val = IntUnitValue(kernel_used, "kB")
-        ret_val.fmt = DEF_FMT_2
-        logger.debug("Total Kernel Used Memory: %d %s", ret_val.value(),
-                     ret_val.unit())
-        return ret_val
+        kval = IntUnitValue(kernel_used, "kB")
+        kval.fmt = DEF_FMT_2
+        logger.debug("Total Kernel Used Memory: %d %s", kval.value(),
+                     kval.unit())
+        return Attr("KERNEL", kval)
 
-    def get_user_used_mem(self) -> IntUnitValue:
+    def _get_user_used_mem(self) -> Attr:
         """
         From http://linuxperf.com/?cat=7
         User Used Memory includes:
@@ -233,20 +237,20 @@ class MemoryInfo:
         for val in used:
             if isinstance(val, int):
                 user_used += val
-        ret_val = IntUnitValue(user_used, "kB")
-        ret_val.fmt = DEF_FMT_2
-        logger.debug("Total User Used Memory: %d %s", ret_val.value(),
-                     ret_val.unit())
-        return ret_val
+        uval = IntUnitValue(user_used, "kB")
+        uval.fmt = DEF_FMT_2
+        logger.debug("Total User Used Memory: %d %s", uval.value(),
+                     uval.unit())
+        return Attr("USER", uval)
 
-    def get_total_mem(self) -> IntUnitValue:
-        val = self._get_attr(MEMTOTAL).value
-        if isinstance(val, IntUnitValue):
-            return val
-        return EmptyIntUnitValue
-
-    def get_free_mem(self) -> IntUnitValue:
-        val = self._get_attr(MEMFREE).value
-        if isinstance(val, IntUnitValue):
-            return val
-        return EmptyIntUnitValue
+    def get_attrs(self, names: List[str]) -> List[Attr]:
+        attrs = []
+        attrs.append(current_time_attr())
+        if not names:
+            names = ["KERNEL", "USER", MEMFREE, MEMTOTAL]
+        if names:
+            for name in names:
+                attr = self._get_attr(name)
+                if attr and attr != EmptyAttr:
+                    attrs.append(attr)
+        return attrs

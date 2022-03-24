@@ -6,17 +6,31 @@
 
 import sys
 import argparse
-from typing import NamedTuple
+import time
 import logging
+from typing import List
+import signal
 from pkg_resources import get_distribution
+
+from xproc import meminfo, value
+from xproc import util as xutil
 
 logger = logging.getLogger("xproc.console")
 
 
-class MemOption(NamedTuple):
-    interval: int
-    count: int
-    debug: bool = False
+def setup_logger(level=logging.INFO):
+    handler = logging.StreamHandler()  # stderr
+    handler.setLevel(level)
+    handler.setFormatter(
+        logging.Formatter(fmt="%(message)s", datefmt='%H:%M:%S'))
+    console = logging.getLogger("xproc.console")
+    console.addHandler(handler)
+    console.setLevel(level)
+
+
+def signal_handler(sig, frame):
+    logger.info("")
+    sys.exit(0)
 
 
 _SUB_CMD = "sub_cmd"
@@ -43,15 +57,25 @@ def parse_argv() -> argparse.Namespace:
     mem_parser = sub_parsers.add_parser("memory",
                                         aliases=["mem"],
                                         help="memory subcommand")
-    mem_parser.add_argument("--debug", action="store_true", help="Debug mode")
-    mem_parser.add_argument("interval", nargs='?', default=1)
-    mem_parser.add_argument("count", nargs='?', default=1)
+    # mem_parser.add_argument("--debug",
+    #                         action="store_true",
+    #                         help="Enable debug mode")
+    mem_parser.add_argument("--list",
+                            action="store_true",
+                            help="List Column Names")
+    mem_parser.add_argument("-e",
+                            "--extra",
+                            action="append",
+                            type=str,
+                            help="Append Memory Column")
+    mem_parser.add_argument("interval", nargs='?', default=1, type=int)
+    mem_parser.add_argument("count", nargs='?', default=5, type=int)
 
-    out_group = mem_parser.add_mutually_exclusive_group()
-    out_group.add_argument("--text", action="store_false")
-    out_group.add_argument("--pretty", action="store_true")
-    out_group.add_argument("--csv",
-                           type=argparse.FileType("w", encoding="utf-8"))
+    # out_group = mem_parser.add_mutually_exclusive_group()
+    # out_group.add_argument("--text", action="store_false")
+    # out_group.add_argument("--pretty", action="store_true")
+    # out_group.add_argument("--csv",
+    #                        type=argparse.FileType("w", encoding="utf-8"))
 
     try:
         parsed = argv.parse_args()
@@ -66,19 +90,46 @@ def show_version():
     print(get_distribution('xproc'))
 
 
-# def show_memory(option: MemOption):
-#     pass
+def list_memory_available_column_names():
+
+    minfo = meminfo.MemoryInfo()
+    for i in xutil.grouper(5, minfo.names()):
+        logger.info("\t%s", ' '.join(i))
+
+
+def show_memory(option: argparse.Namespace):
+    setup_logger()
+    logger.debug("%s", option)
+    if option.list:
+        return list_memory_available_column_names()
+    count = option.count
+    if count <= 0:
+        count = 1
+    interval = max(option.interval, 1)
+    extras = []
+    if option.extra:
+        for item in option.extra:
+            extras.extend([i.strip() for i in item.split(",")])
+
+    loop = 0
+    while count != 0:
+        count -= 1
+        minfo = meminfo.MemoryInfo()
+        attrs = minfo.get_attrs(extras)
+        if loop == 0:
+            logger.info(" ".join((attr.name_str() for attr in attrs)))
+        logger.info(" ".join((attr.value_str() for attr in attrs)))
+        loop += 1
+        time.sleep(interval)
 
 
 def main():
+    signal.signal(signal.SIGINT, signal_handler)
     namespace = parse_argv()
     command = namespace.sub_cmd
     if command in _CMD_VER:
         show_version()
-    # elif command in _CMD_PS:
-    #     pass
-    # elif command in _CMD_MEM:
-    #     option = MemOption(interval=namespace.interval,
-    #                        count=namespace.count,
-    #                        debug=namespace.debug)
-    #     show_memory(option)
+    elif command in _CMD_PS:
+        pass
+    elif command in _CMD_MEM:
+        show_memory(namespace)

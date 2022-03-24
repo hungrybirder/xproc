@@ -3,11 +3,12 @@
 # pylint: disable=missing-function-docstring
 # pylint: disable=missing-class-docstring
 
+from time import strftime, localtime
 from abc import ABCMeta, abstractmethod
 from typing import Union
 
 DEF_FMT_1 = "{0}"
-DEF_FMT_2 = "{0} {1}"
+DEF_FMT_2 = "{0}{1}"
 
 
 class AttrValue(metaclass=ABCMeta):
@@ -28,10 +29,6 @@ class AttrValue(metaclass=ABCMeta):
     def value(self) -> Union[int, str]:
         pass
 
-    @abstractmethod
-    def format_value(self, fmt: str) -> str:
-        pass
-
 
 class StrValue(AttrValue):
 
@@ -41,9 +38,6 @@ class StrValue(AttrValue):
 
     def value(self) -> str:
         return self.val
-
-    def format_value(self, fmt: str) -> str:
-        return fmt.format(self.val)
 
     def __repr__(self) -> str:
         return self.fmt.format(self.val)
@@ -58,9 +52,6 @@ class IntValue(AttrValue):
     def value(self) -> int:
         return self.val
 
-    def format_value(self, fmt: str) -> str:
-        return fmt.format(self.val)
-
     def __repr__(self) -> str:
         return self.fmt.format(self.value())
 
@@ -74,18 +65,21 @@ class IntUnitValue(IntValue):
     def unit(self) -> str:
         return self._unit
 
-    def format_value(self, fmt: str) -> str:
-        return fmt.format(self.val, self.unit)
-
     def __repr__(self) -> str:
         return self.fmt.format(self.value(), self.unit())
 
 
+ValueType = Union[IntValue, IntUnitValue, StrValue]
+
+
 class Attr:
 
-    def __init__(self, name, value: AttrValue):
+    def __init__(self, name, value: ValueType):
         self._name = name
         self._value = value
+        self._name_len = len(name)
+        self._value_len = len(repr(value))
+        self._width = max(self._name_len, self._value_len, 12)
 
     def __repr__(self) -> str:
         return f"{self._name}:{self._value}"
@@ -94,13 +88,15 @@ class Attr:
     def name(self) -> str:
         return self._name
 
+    def name_str(self) -> str:
+        return f"{self._name:>{self._width}s}"
+
+    def value_str(self) -> str:
+        return f"{repr(self._value):>{self._width}s}"
+
     @property
     def value(self) -> AttrValue:
         return self._value
-
-    @property
-    def value_str(self) -> str:
-        return str(self._value)
 
     def set_value_fmt(self, fmt: str):
         self._value.fmt = fmt
@@ -123,3 +119,7 @@ def parse_int_unit_val(name: str, value: str) -> Attr:
 
 def parse_str_val(name: str, value: str) -> Attr:
     return Attr(name, StrValue(value.strip()))
+
+
+def current_time_attr() -> Attr:
+    return Attr("TIME", StrValue(strftime("%H:%M:%S", localtime())))
