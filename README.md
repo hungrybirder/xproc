@@ -8,7 +8,7 @@ pip install -U xproc
 
 ## Support commands
 
-*   `xproc mem` or `xproc meiw`
+*   `xproc mem` or `xproc memory`
 
 ```bash
 xproc mem
