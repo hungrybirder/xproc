@@ -74,7 +74,7 @@ ValueType = Union[IntValue, IntUnitValue, StrValue]
 
 class Attr:
 
-    def __init__(self, name, value: ValueType):
+    def __init__(self, name: str, value: ValueType):
         self._name = name
         self._value = value
         self._name_len = len(name)

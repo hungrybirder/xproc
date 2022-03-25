@@ -8,11 +8,10 @@ import sys
 import argparse
 import time
 import logging
-from typing import List
 import signal
 from pkg_resources import get_distribution
 
-from xproc import meminfo, value
+from xproc import meminfo
 from xproc import util as xutil
 
 logger = logging.getLogger("xproc.console")
@@ -29,6 +28,7 @@ def setup_logger(level=logging.INFO):
 
 
 def signal_handler(sig, frame):
+    logger.debug("SIG: %s, frame: %s", sig, str(frame))
     logger.info("")
     sys.exit(0)
 
@@ -46,8 +46,7 @@ def parse_argv() -> argparse.Namespace:
                                       dest=_SUB_CMD,
                                       help="sub commands")
 
-    version_parser = sub_parsers.add_parser("version",
-                                            help="Show %(prog)s version")
+    sub_parsers.add_parser("version", help="Show %(prog)s version")
 
     ps_parser = sub_parsers.add_parser("process",
                                        aliases=["ps"],
@@ -91,7 +90,6 @@ def show_version():
 
 
 def list_memory_available_column_names():
-
     minfo = meminfo.MemoryInfo()
     for i in xutil.grouper(5, minfo.names()):
         logger.info("\t%s", ' '.join(i))
@@ -110,7 +108,6 @@ def show_memory(option: argparse.Namespace):
     if option.extra:
         for item in option.extra:
             extras.extend([i.strip() for i in item.split(",")])
-
     loop = 0
     while count != 0:
         count -= 1
