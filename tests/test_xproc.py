@@ -12,4 +12,4 @@ def test_pidstatus():
 
 def test_meminfo():
     info = meminfo.MemoryInfo()
-    assert info.get_total_mem() != meminfo.EmptyIntUnitValue
+    assert info.get_attr(meminfo.MEMTOTAL) != meminfo.EmptyAttr

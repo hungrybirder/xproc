@@ -5,14 +5,15 @@
 
 from time import strftime, localtime
 from abc import ABCMeta, abstractmethod
-from typing import Union
+from typing import List, Union
+import re
 
 DEF_FMT_1 = "{0}"
 DEF_FMT_2 = "{0}{1}"
 
 
-class AttrValue(metaclass=ABCMeta):
-    """Attr Value"""
+class Value(metaclass=ABCMeta):
+    """Value"""
 
     def __init__(self):
         self._fmt = DEF_FMT_1
@@ -30,7 +31,7 @@ class AttrValue(metaclass=ABCMeta):
         pass
 
 
-class StrValue(AttrValue):
+class StrValue(Value):
 
     def __init__(self, val: str):
         super().__init__()
@@ -43,7 +44,7 @@ class StrValue(AttrValue):
         return self.fmt.format(self.val)
 
 
-class IntValue(AttrValue):
+class IntValue(Value):
 
     def __init__(self, val: int):
         super().__init__()
@@ -69,7 +70,29 @@ class IntUnitValue(IntValue):
         return self.fmt.format(self.value(), self.unit())
 
 
-ValueType = Union[IntValue, IntUnitValue, StrValue]
+class ListValue(metaclass=ABCMeta):
+    """List Value"""
+
+    @abstractmethod
+    def value(self) -> List:
+        pass
+
+
+class ListIntValue(ListValue):
+
+    def __init__(self, val: List[int]):
+        super().__init__()
+        self._val = val
+        self.fmt = ""  # placeholder
+
+    def value(self) -> List[int]:
+        return self._val
+
+    def __repr__(self) -> str:
+        return " ".join([str(i) for i in self._val])
+
+
+ValueType = Union[IntValue, IntUnitValue, StrValue, ListIntValue]
 
 
 class Attr:
@@ -77,9 +100,6 @@ class Attr:
     def __init__(self, name: str, value: ValueType):
         self._name = name
         self._value = value
-        self._name_len = len(name)
-        self._value_len = len(repr(value))
-        self._width = max(self._name_len, self._value_len, 12)
 
     def __repr__(self) -> str:
         return f"{self._name}:{self._value}"
@@ -88,14 +108,8 @@ class Attr:
     def name(self) -> str:
         return self._name
 
-    def name_str(self) -> str:
-        return f"{self._name:>{self._width}s}"
-
-    def value_str(self) -> str:
-        return f"{repr(self._value):>{self._width}s}"
-
     @property
-    def value(self) -> AttrValue:
+    def value(self) -> ValueType:
         return self._value
 
     def set_value_fmt(self, fmt: str):
@@ -119,6 +133,14 @@ def parse_int_unit_val(name: str, value: str) -> Attr:
 
 def parse_str_val(name: str, value: str) -> Attr:
     return Attr(name, StrValue(value.strip()))
+
+
+def parse_list_int_val(name: str, value: str) -> Attr:
+    vals = []
+    for i in re.split(r"\s+", value):
+        if i:
+            vals.append(int(i))
+    return Attr(name, ListIntValue(vals))
 
 
 def current_time_attr() -> Attr:

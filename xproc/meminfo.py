@@ -223,15 +223,15 @@ class MemoryInfo:
         cached = self._get_attr(CACHED)
         anon_pages = self._get_attr(ANONPAGES)
         buffers = self._get_attr(BUFFERS)
-        hp_total = self._get_attr(HUGEPAGES_TOTAL)
-        hp_size = self._get_attr(HUGEPAGESIZE)
-        logger.debug("User Used Memory Details, %s, %s, %s, %s, %s", cached,
+        hp_total = self.get_attr_int_value(HUGEPAGES_TOTAL)
+        hp_size = self.get_attr_int_value(HUGEPAGESIZE)
+        logger.debug("User Used Memory Details, %s, %s, %s, %d, %d", cached,
                      anon_pages, buffers, hp_total, hp_size)
         used = [
             cached.value.value(),
             anon_pages.value.value(),
             buffers.value.value(),
-            int(hp_total.value.value()) * int(hp_size.value.value())
+            hp_total * hp_size,
         ]
         user_used = 0
         for val in used:
@@ -254,3 +254,6 @@ class MemoryInfo:
                 if attr and attr != EmptyAttr:
                     attrs.append(attr)
         return attrs
+
+    def get_attr(self, name: str) -> Attr:
+        return self._get_attr(name)

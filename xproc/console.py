@@ -111,13 +111,22 @@ def show_memory(option: argparse.Namespace):
     loop = 0
     while count != 0:
         count -= 1
-        minfo = meminfo.MemoryInfo()
-        attrs = minfo.get_attrs(extras)
-        if loop == 0:
-            logger.info(" ".join((attr.name_str() for attr in attrs)))
-        logger.info(" ".join((attr.value_str() for attr in attrs)))
-        loop += 1
-        time.sleep(interval)
+        try:
+            minfo = meminfo.MemoryInfo()
+            attrs = minfo.get_attrs(extras)
+            title, data = [], []
+            for attr in attrs:
+                name, value = attr.name, attr.value
+                val_str = str(value)
+                width = max(len(name), len(val_str), 12)
+                title.append(f"{name:>{width}s}")
+                data.append(f"{val_str:>{width}s}")
+            if loop == 0:
+                logger.info(" ".join(title))
+            logger.info(" ".join(data))
+        finally:
+            loop += 1
+            time.sleep(interval)
 
 
 def main():
