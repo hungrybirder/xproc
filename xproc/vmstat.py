@@ -1,0 +1,339 @@
+from typing import Dict, List
+import logging
+from xproc.util import open_file
+from xproc.value import EmptyIntAttr, Attr, IntValue, parse_int_val, current_time_attr
+
+logger = logging.getLogger("xproc.vmstat")
+
+NR_FREE_PAGES = "nr_free_pages"
+NR_ZONE_INACTIVE_ANON = "nr_zone_inactive_anon"
+NR_ZONE_ACTIVE_ANON = "nr_zone_active_anon"
+NR_ZONE_INACTIVE_FILE = "nr_zone_inactive_file"
+NR_ZONE_ACTIVE_FILE = "nr_zone_active_file"
+NR_ZONE_UNEVICTABLE = "nr_zone_unevictable"
+NR_ZONE_WRITE_PENDING = "nr_zone_write_pending"
+NR_MLOCK = "nr_mlock"
+NR_PAGE_TABLE_PAGES = "nr_page_table_pages"
+NR_KERNEL_STACK = "nr_kernel_stack"
+NR_BOUNCE = "nr_bounce"
+NR_ZSPAGES = "nr_zspages"
+NR_FREE_CMA = "nr_free_cma"
+NUMA_HIT = "numa_hit"
+NUMA_MISS = "numa_miss"
+NUMA_FOREIGN = "numa_foreign"
+NUMA_INTERLEAVE = "numa_interleave"
+NUMA_LOCAL = "numa_local"
+NUMA_OTHER = "numa_other"
+NR_INACTIVE_ANON = "nr_inactive_anon"
+NR_ACTIVE_ANON = "nr_active_anon"
+NR_INACTIVE_FILE = "nr_inactive_file"
+NR_ACTIVE_FILE = "nr_active_file"
+NR_UNEVICTABLE = "nr_unevictable"
+NR_SLAB_RECLAIMABLE = "nr_slab_reclaimable"
+NR_SLAB_UNRECLAIMABLE = "nr_slab_unreclaimable"
+NR_ISOLATED_ANON = "nr_isolated_anon"
+NR_ISOLATED_FILE = "nr_isolated_file"
+WORKINGSET_NODES = "workingset_nodes"
+WORKINGSET_REFAULT = "workingset_refault"
+WORKINGSET_ACTIVATE = "workingset_activate"
+WORKINGSET_RESTORE = "workingset_restore"
+WORKINGSET_NODERECLAIM = "workingset_nodereclaim"
+NR_ANON_PAGES = "nr_anon_pages"
+NR_MAPPED = "nr_mapped"
+NR_FILE_PAGES = "nr_file_pages"
+NR_DIRTY = "nr_dirty"
+NR_WRITEBACK = "nr_writeback"
+NR_WRITEBACK_TEMP = "nr_writeback_temp"
+NR_SHMEM = "nr_shmem"
+NR_SHMEM_HUGEPAGES = "nr_shmem_hugepages"
+NR_SHMEM_PMDMAPPED = "nr_shmem_pmdmapped"
+NR_ANON_TRANSPARENT_HUGEPAGES = "nr_anon_transparent_hugepages"
+NR_UNSTABLE = "nr_unstable"
+NR_VMSCAN_WRITE = "nr_vmscan_write"
+NR_VMSCAN_IMMEDIATE_RECLAIM = "nr_vmscan_immediate_reclaim"
+NR_DIRTIED = "nr_dirtied"
+NR_WRITTEN = "nr_written"
+NR_KERNEL_MISC_RECLAIMABLE = "nr_kernel_misc_reclaimable"
+NR_DIRTY_THRESHOLD = "nr_dirty_threshold"
+NR_DIRTY_BACKGROUND_THRESHOLD = "nr_dirty_background_threshold"
+PGPGIN = "pgpgin"
+PGPGOUT = "pgpgout"
+PSWPIN = "pswpin"
+PSWPOUT = "pswpout"
+PGALLOC_DMA = "pgalloc_dma"
+PGALLOC_DMA32 = "pgalloc_dma32"
+PGALLOC_NORMAL = "pgalloc_normal"
+PGALLOC_MOVABLE = "pgalloc_movable"
+ALLOCSTALL_DMA = "allocstall_dma"
+ALLOCSTALL_DMA32 = "allocstall_dma32"
+ALLOCSTALL_NORMAL = "allocstall_normal"
+ALLOCSTALL_MOVABLE = "allocstall_movable"
+PGSKIP_DMA = "pgskip_dma"
+PGSKIP_DMA32 = "pgskip_dma32"
+PGSKIP_NORMAL = "pgskip_normal"
+PGSKIP_MOVABLE = "pgskip_movable"
+PGFREE = "pgfree"
+PGACTIVATE = "pgactivate"
+PGDEACTIVATE = "pgdeactivate"
+PGLAZYFREE = "pglazyfree"
+PGFAULT = "pgfault"
+PGMAJFAULT = "pgmajfault"
+PGLAZYFREED = "pglazyfreed"
+PGREFILL = "pgrefill"
+PGSTEAL_KSWAPD = "pgsteal_kswapd"
+PGSTEAL_DIRECT = "pgsteal_direct"
+PGSCAN_KSWAPD = "pgscan_kswapd"
+PGSCAN_DIRECT = "pgscan_direct"
+PGSCAN_DIRECT_THROTTLE = "pgscan_direct_throttle"
+ZONE_RECLAIM_FAILED = "zone_reclaim_failed"
+PGINODESTEAL = "pginodesteal"
+SLABS_SCANNED = "slabs_scanned"
+KSWAPD_INODESTEAL = "kswapd_inodesteal"
+KSWAPD_LOW_WMARK_HIT_QUICKLY = "kswapd_low_wmark_hit_quickly"
+KSWAPD_HIGH_WMARK_HIT_QUICKLY = "kswapd_high_wmark_hit_quickly"
+PAGEOUTRUN = "pageoutrun"
+PGROTATED = "pgrotated"
+DROP_PAGECACHE = "drop_pagecache"
+DROP_SLAB = "drop_slab"
+OOM_KILL = "oom_kill"
+NUMA_PTE_UPDATES = "numa_pte_updates"
+NUMA_HUGE_PTE_UPDATES = "numa_huge_pte_updates"
+NUMA_HINT_FAULTS = "numa_hint_faults"
+NUMA_HINT_FAULTS_LOCAL = "numa_hint_faults_local"
+NUMA_PAGES_MIGRATED = "numa_pages_migrated"
+PGMIGRATE_SUCCESS = "pgmigrate_success"
+PGMIGRATE_FAIL = "pgmigrate_fail"
+COMPACT_MIGRATE_SCANNED = "compact_migrate_scanned"
+COMPACT_FREE_SCANNED = "compact_free_scanned"
+COMPACT_ISOLATED = "compact_isolated"
+COMPACT_STALL = "compact_stall"
+COMPACT_FAIL = "compact_fail"
+COMPACT_SUCCESS = "compact_success"
+COMPACT_DAEMON_WAKE = "compact_daemon_wake"
+COMPACT_DAEMON_MIGRATE_SCANNED = "compact_daemon_migrate_scanned"
+COMPACT_DAEMON_FREE_SCANNED = "compact_daemon_free_scanned"
+HTLB_BUDDY_ALLOC_SUCCESS = "htlb_buddy_alloc_success"
+HTLB_BUDDY_ALLOC_FAIL = "htlb_buddy_alloc_fail"
+UNEVICTABLE_PGS_CULLED = "unevictable_pgs_culled"
+UNEVICTABLE_PGS_SCANNED = "unevictable_pgs_scanned"
+UNEVICTABLE_PGS_RESCUED = "unevictable_pgs_rescued"
+UNEVICTABLE_PGS_MLOCKED = "unevictable_pgs_mlocked"
+UNEVICTABLE_PGS_MUNLOCKED = "unevictable_pgs_munlocked"
+UNEVICTABLE_PGS_CLEARED = "unevictable_pgs_cleared"
+UNEVICTABLE_PGS_STRANDED = "unevictable_pgs_stranded"
+THP_FAULT_ALLOC = "thp_fault_alloc"
+THP_FAULT_FALLBACK = "thp_fault_fallback"
+THP_COLLAPSE_ALLOC = "thp_collapse_alloc"
+THP_COLLAPSE_ALLOC_FAILED = "thp_collapse_alloc_failed"
+THP_FILE_ALLOC = "thp_file_alloc"
+THP_FILE_MAPPED = "thp_file_mapped"
+THP_SPLIT_PAGE = "thp_split_page"
+THP_SPLIT_PAGE_FAILED = "thp_split_page_failed"
+THP_DEFERRED_SPLIT_PAGE = "thp_deferred_split_page"
+THP_SPLIT_PMD = "thp_split_pmd"
+THP_SPLIT_PUD = "thp_split_pud"
+THP_ZERO_PAGE_ALLOC = "thp_zero_page_alloc"
+THP_ZERO_PAGE_ALLOC_FAILED = "thp_zero_page_alloc_failed"
+THP_SWPOUT = "thp_swpout"
+THP_SWPOUT_FALLBACK = "thp_swpout_fallback"
+BALLOON_INFLATE = "balloon_inflate"
+BALLOON_DEFLATE = "balloon_deflate"
+BALLOON_MIGRATE = "balloon_migrate"
+SWAP_RA = "swap_ra"
+SWAP_RA_HIT = "swap_ra_hit"
+
+SUPPORT_VMSATA_NAMES = {
+    NR_FREE_PAGES: NR_FREE_PAGES,
+    NR_ZONE_INACTIVE_ANON: NR_ZONE_INACTIVE_ANON,
+    NR_ZONE_ACTIVE_ANON: NR_ZONE_ACTIVE_ANON,
+    NR_ZONE_INACTIVE_FILE: NR_ZONE_INACTIVE_FILE,
+    NR_ZONE_ACTIVE_FILE: NR_ZONE_ACTIVE_FILE,
+    NR_ZONE_UNEVICTABLE: NR_ZONE_UNEVICTABLE,
+    NR_ZONE_WRITE_PENDING: NR_ZONE_WRITE_PENDING,
+    NR_MLOCK: NR_MLOCK,
+    NR_PAGE_TABLE_PAGES: NR_PAGE_TABLE_PAGES,
+    NR_KERNEL_STACK: NR_KERNEL_STACK,
+    NR_BOUNCE: NR_BOUNCE,
+    NR_ZSPAGES: NR_ZSPAGES,
+    NR_FREE_CMA: NR_FREE_CMA,
+    NUMA_HIT: NUMA_HIT,
+    NUMA_MISS: NUMA_MISS,
+    NUMA_FOREIGN: NUMA_FOREIGN,
+    NUMA_INTERLEAVE: NUMA_INTERLEAVE,
+    NUMA_LOCAL: NUMA_LOCAL,
+    NUMA_OTHER: NUMA_OTHER,
+    NR_INACTIVE_ANON: NR_INACTIVE_ANON,
+    NR_ACTIVE_ANON: NR_ACTIVE_ANON,
+    NR_INACTIVE_FILE: NR_INACTIVE_FILE,
+    NR_ACTIVE_FILE: NR_ACTIVE_FILE,
+    NR_UNEVICTABLE: NR_UNEVICTABLE,
+    NR_SLAB_RECLAIMABLE: NR_SLAB_RECLAIMABLE,
+    NR_SLAB_UNRECLAIMABLE: NR_SLAB_UNRECLAIMABLE,
+    NR_ISOLATED_ANON: NR_ISOLATED_ANON,
+    NR_ISOLATED_FILE: NR_ISOLATED_FILE,
+    WORKINGSET_NODES: WORKINGSET_NODES,
+    WORKINGSET_REFAULT: WORKINGSET_REFAULT,
+    WORKINGSET_ACTIVATE: WORKINGSET_ACTIVATE,
+    WORKINGSET_RESTORE: WORKINGSET_RESTORE,
+    WORKINGSET_NODERECLAIM: WORKINGSET_NODERECLAIM,
+    NR_ANON_PAGES: NR_ANON_PAGES,
+    NR_MAPPED: NR_MAPPED,
+    NR_FILE_PAGES: NR_FILE_PAGES,
+    NR_DIRTY: NR_DIRTY,
+    NR_WRITEBACK: NR_WRITEBACK,
+    NR_WRITEBACK_TEMP: NR_WRITEBACK_TEMP,
+    NR_SHMEM: NR_SHMEM,
+    NR_SHMEM_HUGEPAGES: NR_SHMEM_HUGEPAGES,
+    NR_SHMEM_PMDMAPPED: NR_SHMEM_PMDMAPPED,
+    NR_ANON_TRANSPARENT_HUGEPAGES: NR_ANON_TRANSPARENT_HUGEPAGES,
+    NR_UNSTABLE: NR_UNSTABLE,
+    NR_VMSCAN_WRITE: NR_VMSCAN_WRITE,
+    NR_VMSCAN_IMMEDIATE_RECLAIM: NR_VMSCAN_IMMEDIATE_RECLAIM,
+    NR_DIRTIED: NR_DIRTIED,
+    NR_WRITTEN: NR_WRITTEN,
+    NR_KERNEL_MISC_RECLAIMABLE: NR_KERNEL_MISC_RECLAIMABLE,
+    NR_DIRTY_THRESHOLD: NR_DIRTY_THRESHOLD,
+    NR_DIRTY_BACKGROUND_THRESHOLD: NR_DIRTY_BACKGROUND_THRESHOLD,
+    PGPGIN: PGPGIN,
+    PGPGOUT: PGPGOUT,
+    PSWPIN: PSWPIN,
+    PSWPOUT: PSWPOUT,
+    PGALLOC_DMA: PGALLOC_DMA,
+    PGALLOC_DMA32: PGALLOC_DMA32,
+    PGALLOC_NORMAL: PGALLOC_NORMAL,
+    PGALLOC_MOVABLE: PGALLOC_MOVABLE,
+    ALLOCSTALL_DMA: ALLOCSTALL_DMA,
+    ALLOCSTALL_DMA32: ALLOCSTALL_DMA32,
+    ALLOCSTALL_NORMAL: ALLOCSTALL_NORMAL,
+    ALLOCSTALL_MOVABLE: ALLOCSTALL_MOVABLE,
+    PGSKIP_DMA: PGSKIP_DMA,
+    PGSKIP_DMA32: PGSKIP_DMA32,
+    PGSKIP_NORMAL: PGSKIP_NORMAL,
+    PGSKIP_MOVABLE: PGSKIP_MOVABLE,
+    PGFREE: PGFREE,
+    PGACTIVATE: PGACTIVATE,
+    PGDEACTIVATE: PGDEACTIVATE,
+    PGLAZYFREE: PGLAZYFREE,
+    PGFAULT: PGFAULT,
+    PGMAJFAULT: PGMAJFAULT,
+    PGLAZYFREED: PGLAZYFREED,
+    PGREFILL: PGREFILL,
+    PGSTEAL_KSWAPD: PGSTEAL_KSWAPD,
+    PGSTEAL_DIRECT: PGSTEAL_DIRECT,
+    PGSCAN_KSWAPD: PGSCAN_KSWAPD,
+    PGSCAN_DIRECT: PGSCAN_DIRECT,
+    PGSCAN_DIRECT_THROTTLE: PGSCAN_DIRECT_THROTTLE,
+    ZONE_RECLAIM_FAILED: ZONE_RECLAIM_FAILED,
+    PGINODESTEAL: PGINODESTEAL,
+    SLABS_SCANNED: SLABS_SCANNED,
+    KSWAPD_INODESTEAL: KSWAPD_INODESTEAL,
+    KSWAPD_LOW_WMARK_HIT_QUICKLY: KSWAPD_LOW_WMARK_HIT_QUICKLY,
+    KSWAPD_HIGH_WMARK_HIT_QUICKLY: KSWAPD_HIGH_WMARK_HIT_QUICKLY,
+    PAGEOUTRUN: PAGEOUTRUN,
+    PGROTATED: PGROTATED,
+    DROP_PAGECACHE: DROP_PAGECACHE,
+    DROP_SLAB: DROP_SLAB,
+    OOM_KILL: OOM_KILL,
+    NUMA_PTE_UPDATES: NUMA_PTE_UPDATES,
+    NUMA_HUGE_PTE_UPDATES: NUMA_HUGE_PTE_UPDATES,
+    NUMA_HINT_FAULTS: NUMA_HINT_FAULTS,
+    NUMA_HINT_FAULTS_LOCAL: NUMA_HINT_FAULTS_LOCAL,
+    NUMA_PAGES_MIGRATED: NUMA_PAGES_MIGRATED,
+    PGMIGRATE_SUCCESS: PGMIGRATE_SUCCESS,
+    PGMIGRATE_FAIL: PGMIGRATE_FAIL,
+    COMPACT_MIGRATE_SCANNED: COMPACT_MIGRATE_SCANNED,
+    COMPACT_FREE_SCANNED: COMPACT_FREE_SCANNED,
+    COMPACT_ISOLATED: COMPACT_ISOLATED,
+    COMPACT_STALL: COMPACT_STALL,
+    COMPACT_FAIL: COMPACT_FAIL,
+    COMPACT_SUCCESS: COMPACT_SUCCESS,
+    COMPACT_DAEMON_WAKE: COMPACT_DAEMON_WAKE,
+    COMPACT_DAEMON_MIGRATE_SCANNED: COMPACT_DAEMON_MIGRATE_SCANNED,
+    COMPACT_DAEMON_FREE_SCANNED: COMPACT_DAEMON_FREE_SCANNED,
+    HTLB_BUDDY_ALLOC_SUCCESS: HTLB_BUDDY_ALLOC_SUCCESS,
+    HTLB_BUDDY_ALLOC_FAIL: HTLB_BUDDY_ALLOC_FAIL,
+    UNEVICTABLE_PGS_CULLED: UNEVICTABLE_PGS_CULLED,
+    UNEVICTABLE_PGS_SCANNED: UNEVICTABLE_PGS_SCANNED,
+    UNEVICTABLE_PGS_RESCUED: UNEVICTABLE_PGS_RESCUED,
+    UNEVICTABLE_PGS_MLOCKED: UNEVICTABLE_PGS_MLOCKED,
+    UNEVICTABLE_PGS_MUNLOCKED: UNEVICTABLE_PGS_MUNLOCKED,
+    UNEVICTABLE_PGS_CLEARED: UNEVICTABLE_PGS_CLEARED,
+    UNEVICTABLE_PGS_STRANDED: UNEVICTABLE_PGS_STRANDED,
+    THP_FAULT_ALLOC: THP_FAULT_ALLOC,
+    THP_FAULT_FALLBACK: THP_FAULT_FALLBACK,
+    THP_COLLAPSE_ALLOC: THP_COLLAPSE_ALLOC,
+    THP_COLLAPSE_ALLOC_FAILED: THP_COLLAPSE_ALLOC_FAILED,
+    THP_FILE_ALLOC: THP_FILE_ALLOC,
+    THP_FILE_MAPPED: THP_FILE_MAPPED,
+    THP_SPLIT_PAGE: THP_SPLIT_PAGE,
+    THP_SPLIT_PAGE_FAILED: THP_SPLIT_PAGE_FAILED,
+    THP_DEFERRED_SPLIT_PAGE: THP_DEFERRED_SPLIT_PAGE,
+    THP_SPLIT_PMD: THP_SPLIT_PMD,
+    THP_SPLIT_PUD: THP_SPLIT_PUD,
+    THP_ZERO_PAGE_ALLOC: THP_ZERO_PAGE_ALLOC,
+    THP_ZERO_PAGE_ALLOC_FAILED: THP_ZERO_PAGE_ALLOC_FAILED,
+    THP_SWPOUT: THP_SWPOUT,
+    THP_SWPOUT_FALLBACK: THP_SWPOUT_FALLBACK,
+    BALLOON_INFLATE: BALLOON_INFLATE,
+    BALLOON_DEFLATE: BALLOON_DEFLATE,
+    BALLOON_MIGRATE: BALLOON_MIGRATE,
+    SWAP_RA: SWAP_RA,
+    SWAP_RA_HIT: SWAP_RA_HIT,
+}
+
+
+def supported(name: str) -> bool:
+    return name in SUPPORT_VMSATA_NAMES
+
+
+class VMStat:
+
+    def __init__(self):
+        with open_file("/proc/vmstat") as vmstat:
+            lines = [l.strip() for l in vmstat.readlines()]
+        attrs: Dict[str, Attr] = {}
+        for line in lines:
+            idx = line.find(" ")
+            name = line[0:idx]
+            value = line[idx + 1:]
+            attr = parse_int_val(name, value)
+            val = attr.value
+            if isinstance(val, IntValue):
+                attrs[attr.name] = attr
+        self._attrs = attrs
+
+    def _get_attr(self, name: str) -> Attr:
+        return self._attrs.get(name, EmptyIntAttr)
+
+    def get_attrs(self, *names) -> List[Attr]:
+        attrs = []
+        attrs.append(current_time_attr())
+        for name in names:
+            attrs.append(self._get_attr(name))
+        return attrs
+
+
+def list_default_vmstat_names() -> List[str]:
+    return [
+        ALLOCSTALL_MOVABLE,
+        ALLOCSTALL_NORMAL,
+    # COMPACT_DAEMON_FREE_SCANNED,
+    # COMPACT_DAEMON_MIGRATE_SCANNED,
+    # COMPACT_DAEMON_WAKE,
+        COMPACT_FAIL,
+        COMPACT_FREE_SCANNED,
+        COMPACT_ISOLATED,
+        COMPACT_MIGRATE_SCANNED,
+        COMPACT_STALL,
+        COMPACT_SUCCESS,
+    # PGMIGRATE_FAIL,
+    # PGMIGRATE_SUCCESS,
+    # PGSCAN_DIRECT,
+    # PGSCAN_KSWAPD,
+    # PGSTEAL_DIRECT,
+    # PGSTEAL_KSWAPD,
+    # THP_COLLAPSE_ALLOC,
+    # THP_COLLAPSE_ALLOC_FAILED,
+    # THP_FAULT_ALLOC,
+    # THP_FAULT_FALLBACK,
+    ]

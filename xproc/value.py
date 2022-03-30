@@ -78,7 +78,7 @@ class ListIntValue(ListValue):
     def __init__(self, val: List[int]):
         super().__init__()
         self._val = val
-        self.fmt = ""  # placeholder
+        self.fmt = ""    # placeholder
 
     def value(self) -> List[int]:
         return self._val
@@ -115,6 +115,7 @@ EmptyValue = StrValue("")
 EmptyIntValue = IntValue(0)
 EmptyIntUnitValue = IntUnitValue(0, "kB")
 EmptyAttr = Attr("EmptyAttr", EmptyValue)
+EmptyIntAttr = Attr("EmptyAttr", EmptyIntValue)
 
 
 def parse_int_val(name: str, value: str) -> Attr:

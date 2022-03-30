@@ -5,14 +5,14 @@ import logging
 import signal
 from pkg_resources import get_distribution
 
-from xproc import meminfo
-from xproc import util as xutil
+from xproc import meminfo, vmstat
+from xproc.util import grouper
 
 logger = logging.getLogger("xproc.console")
 
 
 def setup_logger(level=logging.INFO):
-    handler = logging.StreamHandler()  # stderr
+    handler = logging.StreamHandler()    # stderr
     handler.setLevel(level)
     handler.setFormatter(
         logging.Formatter(fmt="%(message)s", datefmt='%H:%M:%S'))
@@ -29,6 +29,7 @@ def signal_handler(sig, frame):
 
 _SUB_CMD = "sub_cmd"
 _CMD_MEM = ["memory", "mem"]
+_CMD_VMSTAT = ["vmstat"]
 _CMD_PS = ["process", "ps"]
 _CMD_VER = ["version"]
 
@@ -50,9 +51,6 @@ def parse_argv() -> argparse.Namespace:
     mem_parser = sub_parsers.add_parser("memory",
                                         aliases=["mem"],
                                         help="memory subcommand")
-    # mem_parser.add_argument("--debug",
-    #                         action="store_true",
-    #                         help="Enable debug mode")
     mem_parser.add_argument("--list",
                             action="store_true",
                             help="List Column Names")
@@ -69,6 +67,19 @@ def parse_argv() -> argparse.Namespace:
     # out_group.add_argument("--pretty", action="store_true")
     # out_group.add_argument("--csv",
     #                        type=argparse.FileType("w", encoding="utf-8"))
+    vmstat_parser = sub_parsers.add_parser("vmstat",
+                                           aliases=["vmstat"],
+                                           help="vmstat subcommand")
+    vmstat_parser.add_argument("--list",
+                               action="store_true",
+                               help="List Column Names")
+    vmstat_parser.add_argument("-e",
+                               "--extra",
+                               action="append",
+                               type=str,
+                               help="Append VMStat Column")
+    vmstat_parser.add_argument("interval", nargs='?', default=1, type=int)
+    vmstat_parser.add_argument("count", nargs='?', default=5, type=int)
 
     try:
         parsed = argv.parse_args()
@@ -79,14 +90,19 @@ def parse_argv() -> argparse.Namespace:
     return parsed
 
 
-def show_version():
-    print(get_distribution('xproc'))
-
-
 def list_memory_available_column_names():
     minfo = meminfo.MemoryInfo()
-    for i in xutil.grouper(5, minfo.names()):
+    for i in grouper(5, minfo.names()):
         logger.info("\t%s", ' '.join(i))
+
+
+def list_vmstat_available_column_names():
+    for i in grouper(6, vmstat.SUPPORT_VMSATA_NAMES.keys()):
+        logger.info("\t%s", ' '.join(i))
+
+
+def show_version():
+    print(get_distribution('xproc'))
 
 
 def show_memory(option: argparse.Namespace):
@@ -123,6 +139,42 @@ def show_memory(option: argparse.Namespace):
             time.sleep(interval)
 
 
+def show_vmstat(option: argparse.Namespace):
+    setup_logger()
+    logger.debug("%s", option)
+    if option.list:
+        return list_vmstat_available_column_names()
+    count = option.count
+    if count <= 0:
+        count = 1
+    interval = max(option.interval, 1)
+    extras = []
+    if option.extra:
+        for item in option.extra:
+            extras.extend([i.strip() for i in item.split(",")])
+    else:
+        extras.extend(vmstat.list_default_vmstat_names())
+    loop = 0
+    while count != 0:
+        count -= 1
+        try:
+            vm = vmstat.VMStat()
+            attrs = vm.get_attrs(*extras)
+            title, data = [], []
+            for attr in attrs:
+                name, value = attr.name, attr.value
+                val_str = str(value)
+                width = max(len(name), len(val_str), 12)
+                title.append(f"{name:>{width}s}")
+                data.append(f"{val_str:>{width}s}")
+            if loop == 0:
+                logger.info(" ".join(title))
+            logger.info(" ".join(data))
+        finally:
+            loop += 1
+            time.sleep(interval)
+
+
 def main():
     signal.signal(signal.SIGINT, signal_handler)
     namespace = parse_argv()
@@ -133,3 +185,5 @@ def main():
         pass
     elif command in _CMD_MEM:
         show_memory(namespace)
+    elif command in _CMD_VMSTAT:
+        show_vmstat(namespace)
