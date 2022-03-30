@@ -1,8 +1,3 @@
-# pylint: disable=too-few-public-methods
-# pylint: disable=missing-module-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-class-docstring
-
 import re
 from typing import NamedTuple
 

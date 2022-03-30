@@ -1,8 +1,3 @@
-# pylint: disable=too-few-public-methods
-# pylint: disable=missing-module-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-class-docstring
-
 from collections import OrderedDict
 from typing import Dict, List
 import logging
@@ -128,7 +123,7 @@ class MemoryInfo:
         for line in lines:
             sep_idx = line.find(":")
             name = line[0:sep_idx]
-            val = line[sep_idx + 1:-1]  # exclude \n
+            val = line[sep_idx + 1:-1]    # exclude \n
             if name not in ATTR_DICT:
                 continue
             parser, fmt = ATTR_DICT[name]

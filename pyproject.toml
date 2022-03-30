@@ -23,8 +23,24 @@ python = "^3.6"
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 
+[tool.yapf]
+based_on_style = "pep8"
+spaces_before_comment = 4
+split_before_logical_operator = true
+split_penalty_import_names = 1
+
 [tool.poetry.scripts]
 xproc = "xproc.console:main"
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "too-few-public-methods",
+    "missing-module-docstring",
+    "missing-function-docstring",
+    "missing-class-docstring",
+    "W0703",
+    "C0305",
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

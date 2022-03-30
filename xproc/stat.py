@@ -1,11 +1,3 @@
-# pylint: disable=too-few-public-methods
-# pylint: disable=missing-module-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-class-docstring
-# pylint: disable=W0703
-
-# /proc/stat
-
 from typing import NamedTuple, List
 
 from xproc.value import (
