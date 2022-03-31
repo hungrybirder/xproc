@@ -1,3 +1,7 @@
+# 1.2.0
+
+1.  Support vmstat command
+
 # 1.1.0
 
 1.  Support memory command

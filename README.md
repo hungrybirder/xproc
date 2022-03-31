@@ -29,3 +29,15 @@ xproc mem -e "Active,Inactive,Active(anon),Inactive(anon),Active(file),Inactive(
     21:21:25    4397404kB    8727816kB     173300kB          128kB    4224104kB      8727688kB
     21:21:27    4397404kB    8727816kB     173300kB          128kB    4224104kB      8727688kB
 ```
+
+*   `xproc vmstat`
+
+```bash
+xproc vmstat 1 5
+        TIME allocstall_movable allocstall_normal compact_fail compact_free_scanned compact_isolated compact_migrate_scanned compact_stall compact_success
+    10:15:01              40908                55            0               108344            75443                   43462            56              56
+    10:15:02              40908                55            0               108344            75443                   43462            56              56
+    10:15:03              40908                55            0               108344            75443                   43462            56              56
+    10:15:04              40908                55            0               108344            75443                   43462            56              56
+    10:15:05              40908                55            0               108344            75443                   43462            56              56
+```
