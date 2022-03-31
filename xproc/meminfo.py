@@ -1,6 +1,8 @@
-from collections import OrderedDict
-from typing import Dict, List
+import re
+from collections import OrderedDict, defaultdict
+from typing import Dict, List, NamedTuple, Tuple
 import logging
+from xproc.util import open_file
 
 from xproc.value import (
     IntUnitValue,
@@ -252,3 +254,126 @@ class MemoryInfo:
 
     def get_attr(self, name: str) -> Attr:
         return self._get_attr(name)
+
+
+class Vmalloc(NamedTuple):
+    vaddr_start: int
+    vaddr_end: int
+    size_in_bytes: int
+    caller: str
+    # optional fields
+    pages: int = 0    # number of pages
+    phys: int = 0    # physical address
+    ioremap: bool = False    # I/O mapping (ioremap() and friends)
+    vmalloc: bool = False    # vmalloc() area
+    vmap: bool = False    # vmap()ed pages
+    user: bool = False    # VM_USERMAP area
+    vpages: bool = False    # buffer for pages pointers was vmalloced (huge area)
+    npages_on_memory_node: Dict[str, int] = {}
+    tag: str = ""
+
+
+EmptyVmalloc = Vmalloc(0, 0, 0, "")
+
+
+class VmallocInfo:
+
+    PAGES_PAT = re.compile(r"^pages=(?P<pages>\d+)$")
+
+    NODE_PAT = re.compile(r"^N(?P<index>\d)=(?P<pages>\d+)$")
+
+    PHYS_PAT = re.compile(r"phys=(?P<addr>\d+)")
+
+    TAG_PAT = re.compile(r"^(?P<tag>\[\w+\])$")
+
+    UNPURGED = "unpurged"
+    IOREMAP = "ioremap"
+    VMALLOC = "vmalloc"
+    VMAP = "vmap"
+    USER = "user"
+    VPAGES = "vpages"
+
+    @staticmethod
+    def _parse(line: str) -> Vmalloc:
+        # pylint: disable=too-many-locals,too-many-statements
+        # https://github.com/torvalds/linux/blob/master/Documentation/filesystems/proc.rst#vmallocinfo
+        units = re.split(r"\s+", line)
+        addr_range = units[0]
+        idx = addr_range.find("-")
+        start = int(addr_range[0:idx], base=16)
+        end = int(addr_range[idx + 1:], base=16)
+        size = int(units[1])
+        if end - start != size:
+            logger.error("end(%d) - start(%d) != size(%d)", end, start, size)
+        caller = units[2]
+        if caller == VmallocInfo.UNPURGED:
+            return Vmalloc(start, end, size, VmallocInfo.UNPURGED)
+        # parse optional
+        pages = 0
+        phys = 0
+        ioremap = False
+        vmalloc = False
+        vmap = False
+        user = False
+        vpages = False
+        npages_on_memory_node: Dict[str, int] = {}
+        tag = ""
+        for unit in units[3:]:
+            match = VmallocInfo.TAG_PAT.match(unit)
+            if match:
+                tag = match.group("tag")
+                continue
+            match = VmallocInfo.PAGES_PAT.match(unit)
+            if match:
+                pages = int(match.group("pages"))
+                continue
+            match = VmallocInfo.PHYS_PAT.match(unit)
+            if match:
+                phys = int(match.group("addr"), base=16)
+                continue
+            if unit == VmallocInfo.IOREMAP:
+                ioremap = True
+                continue
+            if unit == VmallocInfo.VMALLOC:
+                vmalloc = True
+                continue
+            if unit == VmallocInfo.VMAP:
+                vmap = True
+                continue
+            if unit == VmallocInfo.USER:
+                user = True
+                continue
+            if unit == VmallocInfo.VPAGES:
+                vpages = True
+                continue
+            match = VmallocInfo.NODE_PAT.match(unit)
+            if match:
+                node_idx = match.group("index")
+                node_pages = match.group("pages")
+                npages_on_memory_node[f"N{node_idx}"] = int(node_pages)
+                continue
+        return Vmalloc(start, end, size, caller, pages, phys, ioremap, vmalloc,
+                       vmap, user, vpages, npages_on_memory_node, tag)
+
+    def __init__(self, path="/proc/vmallocinfo"):
+        with open_file(path) as vminfo:
+            lines = [l.strip() for l in vminfo.readlines()]
+        vms = []
+        for line in lines:
+            vmalloc = VmallocInfo._parse(line)
+            if vmalloc != EmptyVmalloc:
+                vms.append(vmalloc)
+        self._vmallocs = vms
+        callers = defaultdict(list)
+        for vmalloc in vms:
+            callers[vmalloc.caller].append(vmalloc)
+        self._callers: Dict[str, List[Vmalloc]] = callers
+        by_size: List[Tuple[str, int]] = []
+        for cname, clist in self._callers.items():
+            csize = 0
+            for cvm in clist:
+                csize += cvm.size_in_bytes
+            by_size.append((cname, csize))
+        self._sorted_by_size = sorted(by_size,
+                                      key=lambda pair: pair[1],
+                                      reverse=True)
