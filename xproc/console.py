@@ -5,7 +5,7 @@ import logging
 import signal
 from pkg_resources import get_distribution
 
-from xproc import meminfo, vmstat
+from xproc import meminfo, vmstat, load
 from xproc.util import grouper
 
 logger = logging.getLogger("xproc.console")
@@ -32,6 +32,7 @@ _CMD_MEM = ["memory", "mem"]
 _CMD_VMSTAT = ["vmstat"]
 _CMD_PS = ["process", "ps"]
 _CMD_VER = ["version"]
+_CMD_LOAD = ["load"]
 
 
 def parse_argv() -> argparse.Namespace:
@@ -67,9 +68,7 @@ def parse_argv() -> argparse.Namespace:
     # out_group.add_argument("--pretty", action="store_true")
     # out_group.add_argument("--csv",
     #                        type=argparse.FileType("w", encoding="utf-8"))
-    vmstat_parser = sub_parsers.add_parser("vmstat",
-                                           aliases=["vmstat"],
-                                           help="vmstat subcommand")
+    vmstat_parser = sub_parsers.add_parser("vmstat", help="vmstat subcommand")
     vmstat_parser.add_argument("--list",
                                action="store_true",
                                help="List Column Names")
@@ -80,6 +79,10 @@ def parse_argv() -> argparse.Namespace:
                                help="Append VMStat Column")
     vmstat_parser.add_argument("interval", nargs='?', default=1, type=int)
     vmstat_parser.add_argument("count", nargs='?', default=5, type=int)
+
+    load_parser = sub_parsers.add_parser("load", help="vmstat subcommand")
+    load_parser.add_argument("interval", nargs='?', default=1, type=int)
+    load_parser.add_argument("count", nargs='?', default=-1, type=int)
 
     try:
         parsed = argv.parse_args()
@@ -111,8 +114,6 @@ def show_memory(option: argparse.Namespace):
     if option.list:
         return list_memory_available_column_names()
     count = option.count
-    if count <= 0:
-        count = 1
     interval = max(option.interval, 1)
     extras = []
     if option.extra:
@@ -145,8 +146,6 @@ def show_vmstat(option: argparse.Namespace):
     if option.list:
         return list_vmstat_available_column_names()
     count = option.count
-    if count <= 0:
-        count = 1
     interval = max(option.interval, 1)
     extras = []
     if option.extra:
@@ -158,8 +157,32 @@ def show_vmstat(option: argparse.Namespace):
     while count != 0:
         count -= 1
         try:
-            vm = vmstat.VMStat()
-            attrs = vm.get_attrs(*extras)
+            attrs = vmstat.VMStat().get_attrs(*extras)
+            title, data = [], []
+            for attr in attrs:
+                name, value = attr.name, attr.value
+                val_str = str(value)
+                width = max(len(name), len(val_str), 12)
+                title.append(f"{name:>{width}s}")
+                data.append(f"{val_str:>{width}s}")
+            if loop == 0:
+                logger.info(" ".join(title))
+            logger.info(" ".join(data))
+        finally:
+            loop += 1
+            time.sleep(interval)
+
+
+def show_load(option: argparse.Namespace):
+    setup_logger()
+    logger.debug("%s", option)
+    count = option.count
+    interval = max(option.interval, 1)
+    loop = 0
+    while count != 0:
+        count -= 1
+        try:
+            attrs = load.current_loadavg().get_attrs()
             title, data = [], []
             for attr in attrs:
                 name, value = attr.name, attr.value
@@ -187,3 +210,5 @@ def main():
         show_memory(namespace)
     elif command in _CMD_VMSTAT:
         show_vmstat(namespace)
+    elif command in _CMD_LOAD:
+        show_load(namespace)

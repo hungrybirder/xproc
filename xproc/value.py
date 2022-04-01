@@ -52,6 +52,19 @@ class IntValue(Value):
         return self.fmt.format(self.value())
 
 
+class FloatValue(Value):
+
+    def __init__(self, val: float):
+        super().__init__()
+        self.val = val
+
+    def value(self) -> float:
+        return self.val
+
+    def __repr__(self) -> str:
+        return self.fmt.format(self.value())
+
+
 class IntUnitValue(IntValue):
 
     def __init__(self, val: int, unit: str):
@@ -87,7 +100,7 @@ class ListIntValue(ListValue):
         return " ".join([str(i) for i in self._val])
 
 
-ValueType = Union[IntValue, IntUnitValue, StrValue, ListIntValue]
+ValueType = Union[IntValue, IntUnitValue, StrValue, FloatValue, ListIntValue]
 
 
 class Attr:

@@ -1,5 +1,12 @@
 import re
-from typing import NamedTuple
+from typing import List, NamedTuple
+
+from xproc.value import (
+    Attr,
+    FloatValue,
+    IntValue,
+    current_time_attr,
+)
 
 
 class Loadavg(NamedTuple):
@@ -9,6 +16,17 @@ class Loadavg(NamedTuple):
     nr_running: int
     nr_total: int
     last_pid: int
+
+    def get_attrs(self) -> List[Attr]:
+        attrs = []
+        attrs.append(current_time_attr())
+        attrs.append(Attr("LOAD_1_MIN", FloatValue(self.load_1)))
+        attrs.append(Attr("LOAD_5_MIN", FloatValue(self.load_5)))
+        attrs.append(Attr("LOAD_15_MIN", FloatValue(self.load_15)))
+        attrs.append(Attr("NR_RUNNING", IntValue(self.nr_running)))
+        attrs.append(Attr("NR_TOTAL", IntValue(self.nr_total)))
+        attrs.append(Attr("LAST_PID", IntValue(self.last_pid)))
+        return attrs
 
 
 EmptyLoadavg = Loadavg(0, 0, 0, 0, 0, 0)
