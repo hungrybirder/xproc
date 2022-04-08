@@ -70,6 +70,7 @@ class IntUnitValue(IntValue):
     def __init__(self, val: int, unit: str):
         super().__init__(val)
         self._unit = unit
+        self._fmt = DEF_FMT_2
 
     def unit(self) -> str:
         return self._unit

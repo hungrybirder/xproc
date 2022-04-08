@@ -5,7 +5,7 @@ import logging
 import signal
 from pkg_resources import get_distribution
 
-from xproc import meminfo, vmstat, load
+from xproc import meminfo, vmstat, load, slabinfo
 from xproc.util import grouper
 
 logger = logging.getLogger("xproc.console")
@@ -33,6 +33,7 @@ _CMD_VMSTAT = ["vmstat"]
 _CMD_PS = ["process", "ps"]
 _CMD_VER = ["version"]
 _CMD_LOAD = ["load"]
+# _CMD_SLABINFO = ["slabinfo"]
 
 
 def parse_argv() -> argparse.Namespace:
@@ -84,6 +85,23 @@ def parse_argv() -> argparse.Namespace:
     load_parser.add_argument("interval", nargs='?', default=1, type=int)
     load_parser.add_argument("count", nargs='?', default=-1, type=int)
 
+    # slab_parser = sub_parsers.add_parser("slabinfo",
+    #                                      help="slabinfo subcommand")
+    # slab_parser.add_argument("--sort",
+    #                          "-s",
+    #                          type=str,
+    #                          choices=["a", "o", "v", "l", "s"],
+    #                          help="""
+    #                             a: active_objs
+    #                             o: num_objs
+    #                             v: active_slabs
+    #                             l: num_slabs
+    #                             s: objsize
+    #                          """)
+    # slab_parser.add_argument("--top",
+    #                          type=int,
+    #                          default=10,
+    #                          help="Top N(default=10)")
     try:
         parsed = argv.parse_args()
     except Exception:
@@ -198,6 +216,14 @@ def show_load(option: argparse.Namespace):
             time.sleep(interval)
 
 
+# def show_slabinfo(option: argparse.Namespace):
+#     setup_logger()
+#     logger.debug("%s", option)
+#     sort_by = option.sort
+#     top_n = option.top
+#     slab_info = slabinfo.current_slabinfo()
+
+
 def main():
     signal.signal(signal.SIGINT, signal_handler)
     namespace = parse_argv()
@@ -212,3 +238,5 @@ def main():
         show_vmstat(namespace)
     elif command in _CMD_LOAD:
         show_load(namespace)
+    # elif command in _CMD_SLABINFO:
+    #     show_slabinfo(namespace)

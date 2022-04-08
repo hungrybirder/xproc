@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "xproc"
-version = "1.3.0-alpha.0"
+version = "1.3.0"
 description = "Linux Proc File System Snooper"
 authors = ["liyong <hungrybirder@gmail.com>"]
 license = "MIT"
