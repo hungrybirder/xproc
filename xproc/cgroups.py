@@ -40,7 +40,7 @@ class CGroups:
             name = parts[0]
             hierarchy = int(parts[1])
             num_cgroups = int(parts[2])
-            enabled = True if int(parts[3]) == 1 else False
+            enabled = bool(int(parts[3]) == 1)
             sub_sys[name] = SubSys(name, hierarchy, num_cgroups, enabled)
         self._subsys = sub_sys
 

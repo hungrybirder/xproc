@@ -5,7 +5,7 @@ import logging
 import signal
 from pkg_resources import get_distribution
 
-from xproc import meminfo, vmstat, load, slabinfo
+from xproc import meminfo, vmstat, load
 from xproc.util import grouper
 
 logger = logging.getLogger("xproc.console")
@@ -62,7 +62,7 @@ def parse_argv() -> argparse.Namespace:
                             type=str,
                             help="Append Memory Column")
     mem_parser.add_argument("interval", nargs='?', default=1, type=int)
-    mem_parser.add_argument("count", nargs='?', default=5, type=int)
+    mem_parser.add_argument("count", nargs='?', default=-1, type=int)
 
     # out_group = mem_parser.add_mutually_exclusive_group()
     # out_group.add_argument("--text", action="store_false")
