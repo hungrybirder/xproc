@@ -79,7 +79,7 @@ def parse_argv() -> argparse.Namespace:
                                type=str,
                                help="Append VMStat Column")
     vmstat_parser.add_argument("interval", nargs='?', default=1, type=int)
-    vmstat_parser.add_argument("count", nargs='?', default=5, type=int)
+    vmstat_parser.add_argument("count", nargs='?', default=-1, type=int)
 
     load_parser = sub_parsers.add_parser("load", help="vmstat subcommand")
     load_parser.add_argument("interval", nargs='?', default=1, type=int)
@@ -126,6 +126,14 @@ def show_version():
     print(get_distribution('xproc'))
 
 
+def should_print_header(loop: int, interval: int) -> bool:
+    if loop == 0:
+        return True
+    if loop % (interval * 10) == 0:
+        return True
+    return False
+
+
 def show_memory(option: argparse.Namespace):
     setup_logger()
     logger.debug("%s", option)
@@ -150,7 +158,7 @@ def show_memory(option: argparse.Namespace):
                 width = max(len(name), len(val_str), 12)
                 title.append(f"{name:>{width}s}")
                 data.append(f"{val_str:>{width}s}")
-            if loop == 0:
+            if should_print_header(loop, interval):
                 logger.info(" ".join(title))
             logger.info(" ".join(data))
         finally:
@@ -183,7 +191,7 @@ def show_vmstat(option: argparse.Namespace):
                 width = max(len(name), len(val_str), 12)
                 title.append(f"{name:>{width}s}")
                 data.append(f"{val_str:>{width}s}")
-            if loop == 0:
+            if should_print_header(loop, interval):
                 logger.info(" ".join(title))
             logger.info(" ".join(data))
         finally:
@@ -208,7 +216,7 @@ def show_load(option: argparse.Namespace):
                 width = max(len(name), len(val_str), 12)
                 title.append(f"{name:>{width}s}")
                 data.append(f"{val_str:>{width}s}")
-            if loop == 0:
+            if should_print_header(loop, interval):
                 logger.info(" ".join(title))
             logger.info(" ".join(data))
         finally:
