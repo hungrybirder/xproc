@@ -88,7 +88,7 @@ def current_system_stat(path="/proc/stat"):
             value = attr.value
             if isinstance(value, ListIntValue):
                 i_other[name] = value.value()[0]
-    return SystemStat(cpus[0], cpus[1:], d_other.get("intr"),
-                      i_other.get("ctxt"), i_other.get("btime"),
-                      i_other.get("processes"), i_other.get("procs_running"),
-                      i_other.get("procs_blocked"), SoftIRQStat(*softirq))
+    return SystemStat(cpus[0], cpus[1:], d_other["intr"], i_other["ctxt"],
+                      i_other["btime"], i_other["processes"],
+                      i_other["procs_running"], i_other["procs_blocked"],
+                      SoftIRQStat(*softirq))

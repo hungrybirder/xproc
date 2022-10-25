@@ -5,14 +5,16 @@ import logging
 import signal
 from pkg_resources import get_distribution
 
-from xproc import meminfo, vmstat, load
+from xproc import meminfo, vmstat, load, interrupt
+from xproc.interrupt import Interrupts
 from xproc.util import grouper
 
 logger = logging.getLogger("xproc.console")
 
 
 def setup_logger(level=logging.INFO):
-    handler = logging.StreamHandler()    # stderr
+    # log to stderr
+    handler = logging.StreamHandler()
     handler.setLevel(level)
     handler.setFormatter(
         logging.Formatter(fmt="%(message)s", datefmt='%H:%M:%S'))
@@ -34,15 +36,10 @@ _CMD_PS = ["process", "ps"]
 _CMD_VER = ["version"]
 _CMD_LOAD = ["load"]
 # _CMD_SLABINFO = ["slabinfo"]
+_CMD_INTERRUPT = ["interrupt", "int"]
 
 
-def parse_argv() -> argparse.Namespace:
-    argv = argparse.ArgumentParser("xproc", add_help=False)
-
-    sub_parsers = argv.add_subparsers(required=True,
-                                      dest=_SUB_CMD,
-                                      help="sub commands")
-
+def _add_ps_parser(sub_parsers):
     sub_parsers.add_parser("version", help="Show %(prog)s version")
 
     ps_parser = sub_parsers.add_parser("process",
@@ -50,6 +47,8 @@ def parse_argv() -> argparse.Namespace:
                                        help="TODO process subcommand")
     ps_parser.add_argument("-P", "--pid", type=int, required=True, help="PID")
 
+
+def _add_mem_parser(sub_parsers):
     mem_parser = sub_parsers.add_parser("memory",
                                         aliases=["mem"],
                                         help="memory subcommand")
@@ -64,11 +63,8 @@ def parse_argv() -> argparse.Namespace:
     mem_parser.add_argument("interval", nargs='?', default=1, type=int)
     mem_parser.add_argument("count", nargs='?', default=-1, type=int)
 
-    # out_group = mem_parser.add_mutually_exclusive_group()
-    # out_group.add_argument("--text", action="store_false")
-    # out_group.add_argument("--pretty", action="store_true")
-    # out_group.add_argument("--csv",
-    #                        type=argparse.FileType("w", encoding="utf-8"))
+
+def _add_vmstat_parser(sub_parsers):
     vmstat_parser = sub_parsers.add_parser("vmstat", help="vmstat subcommand")
     vmstat_parser.add_argument("--list",
                                action="store_true",
@@ -81,27 +77,64 @@ def parse_argv() -> argparse.Namespace:
     vmstat_parser.add_argument("interval", nargs='?', default=1, type=int)
     vmstat_parser.add_argument("count", nargs='?', default=-1, type=int)
 
+
+def _add_load_parser(sub_parsers):
     load_parser = sub_parsers.add_parser("load", help="vmstat subcommand")
     load_parser.add_argument("interval", nargs='?', default=1, type=int)
     load_parser.add_argument("count", nargs='?', default=-1, type=int)
 
-    # slab_parser = sub_parsers.add_parser("slabinfo",
-    #                                      help="slabinfo subcommand")
-    # slab_parser.add_argument("--sort",
-    #                          "-s",
-    #                          type=str,
-    #                          choices=["a", "o", "v", "l", "s"],
-    #                          help="""
-    #                             a: active_objs
-    #                             o: num_objs
-    #                             v: active_slabs
-    #                             l: num_slabs
-    #                             s: objsize
-    #                          """)
-    # slab_parser.add_argument("--top",
-    #                          type=int,
-    #                          default=10,
-    #                          help="Top N(default=10)")
+
+def _add_int_parser(sub_parsers):
+    int_parser = sub_parsers.add_parser("interrupt",
+                                        aliases=["int"],
+                                        help="interrupt subcommand")
+    int_parser.add_argument("-a",
+                            "--all",
+                            action="store_true",
+                            help="Show every cpu")
+    int_parser.add_argument("-f",
+                            "--filter",
+                            action="append",
+                            type=str,
+                            help="Filter interrupt")
+    int_parser.add_argument("-l",
+                            "--list",
+                            action="store_true",
+                            help="List interrupt labels")
+    int_parser.add_argument("interval", nargs='?', default=1, type=int)
+    int_parser.add_argument("count", nargs='?', default=-1, type=int)
+
+
+# def _add_slab_parser(sub_parsers):
+#     slab_parser = sub_parsers.add_parser("slabinfo",
+#                                          help="slabinfo subcommand")
+#     slab_parser.add_argument("--sort",
+#                              "-s",
+#                              type=str,
+#                              choices=["a", "o", "v", "l", "s"],
+#                              help="""
+#                                 a: active_objs
+#                                 o: num_objs
+#                                 v: active_slabs
+#                                 l: num_slabs
+#                                 s: objsize
+#                              """)
+#     slab_parser.add_argument("--top",
+#                              type=int,
+#                              default=10,
+#                              help="Top N(default=10)")
+
+
+def parse_argv() -> argparse.Namespace:
+    argv = argparse.ArgumentParser("xproc", add_help=False)
+    sub_parsers = argv.add_subparsers(required=True,
+                                      dest=_SUB_CMD,
+                                      help="sub commands")
+    _add_ps_parser(sub_parsers)
+    _add_mem_parser(sub_parsers)
+    _add_vmstat_parser(sub_parsers)
+    _add_load_parser(sub_parsers)
+    _add_int_parser(sub_parsers)
     try:
         parsed = argv.parse_args()
     except Exception:
@@ -135,7 +168,6 @@ def should_print_header(loop: int, interval: int) -> bool:
 
 
 def show_memory(option: argparse.Namespace):
-    setup_logger()
     logger.debug("%s", option)
     if option.list:
         return list_memory_available_column_names()
@@ -167,7 +199,6 @@ def show_memory(option: argparse.Namespace):
 
 
 def show_vmstat(option: argparse.Namespace):
-    setup_logger()
     logger.debug("%s", option)
     if option.list:
         return list_vmstat_available_column_names()
@@ -200,7 +231,6 @@ def show_vmstat(option: argparse.Namespace):
 
 
 def show_load(option: argparse.Namespace):
-    setup_logger()
     logger.debug("%s", option)
     count = option.count
     interval = max(option.interval, 1)
@@ -225,14 +255,36 @@ def show_load(option: argparse.Namespace):
 
 
 # def show_slabinfo(option: argparse.Namespace):
-#     setup_logger()
 #     logger.debug("%s", option)
 #     sort_by = option.sort
 #     top_n = option.top
 #     slab_info = slabinfo.current_slabinfo()
 
 
+def list_int_label(ints: Interrupts):
+    title = [f"{'LABEL':>12s}", f"{'NAME':>24s}"]
+    logger.info(" ".join(title))
+    title = [f"{'-----':>12s}", f"{'----':>24s}"]
+    logger.info(" ".join(title))
+    for label, name in ints.list_labels():
+        data = [f"{label:>12s}", f"{name:>24s}"]
+        logger.info(" ".join(data))
+
+
+def show_interrupt(option: argparse.Namespace):
+    logger.debug("%s", option)
+    last_ints = interrupt.get()
+    if option.list:
+        return list_int_label(last_ints)
+    count = option.count
+    interval = max(option.interval, 1)
+    while count != 0:
+        count -= 1
+        time.sleep(interval)
+
+
 def main():
+    setup_logger()
     signal.signal(signal.SIGINT, signal_handler)
     namespace = parse_argv()
     command = namespace.sub_cmd
@@ -246,5 +298,7 @@ def main():
         show_vmstat(namespace)
     elif command in _CMD_LOAD:
         show_load(namespace)
+    elif command in _CMD_INTERRUPT:
+        show_interrupt(namespace)
     # elif command in _CMD_SLABINFO:
     #     show_slabinfo(namespace)

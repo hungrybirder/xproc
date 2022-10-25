@@ -2,9 +2,9 @@ import itertools
 
 
 def grouper(size: int, iterable):    # Copy from stackoverflow
-    aiter = iter(iterable)
+    a_iter = iter(iterable)
     while True:
-        chunk = tuple(itertools.islice(aiter, size))
+        chunk = tuple(itertools.islice(a_iter, size))
         if not chunk:
             return
         yield chunk
