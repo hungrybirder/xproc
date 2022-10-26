@@ -81,6 +81,7 @@ class Interrupts(NamedTuple):
         sorted_stats = sorted(self.stats,
                               key=attrgetter("total"),
                               reverse=reverse)
+        top_idx = -1
         if top > 0:
             top_idx = min(top, len(sorted_stats))
         return Interrupts(total_int=self.total_int,
