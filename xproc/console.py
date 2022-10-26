@@ -7,7 +7,7 @@ from pkg_resources import get_distribution
 
 from xproc import meminfo, vmstat, load, interrupt
 from xproc.interrupt import Interrupts
-from xproc.util import grouper
+from xproc.util import grouper, cpu_count
 
 logger = logging.getLogger("xproc.console")
 
@@ -97,10 +97,20 @@ def _add_int_parser(sub_parsers):
                             action="append",
                             type=str,
                             help="Filter interrupt")
+    int_parser.add_argument("-c",
+                            "--cpus",
+                            action="append",
+                            type=str,
+                            help="Display specifed cpus,(e.g. 0,2,4-7)+TOTAL")
     int_parser.add_argument("-l",
                             "--list",
                             action="store_true",
                             help="List interrupt labels")
+    int_parser.add_argument("-t",
+                            "--top",
+                            type=int,
+                            default=-1,
+                            help="Top N interrupts")
     int_parser.add_argument("interval", nargs='?', default=1, type=int)
     int_parser.add_argument("count", nargs='?', default=-1, type=int)
 
@@ -262,12 +272,12 @@ def show_load(option: argparse.Namespace):
 
 
 def list_int_label(ints: Interrupts):
-    title = [f"{'LABEL':>12s}", f"{'NAME':>24s}"]
+    title = [f"{'LABEL':>10s}", f"{'NAME':>50s}"]
     logger.info(" ".join(title))
-    title = [f"{'-----':>12s}", f"{'----':>24s}"]
+    title = [f"{'-----':>10s}", f"{'----':>50s}"]
     logger.info(" ".join(title))
     for label, name in ints.list_labels():
-        data = [f"{label:>12s}", f"{name:>24s}"]
+        data = [f"{label:>10s}", f"{name:>50s}"]
         logger.info(" ".join(data))
 
 
@@ -278,9 +288,24 @@ def show_interrupt(option: argparse.Namespace):
         return list_int_label(last_ints)
     count = option.count
     interval = max(option.interval, 1)
+    # TODO: top > filter == cpus > all ? 合理吗
+    # TODO:找到哪个中断最多
+    # TODO:滤某个中断
+    # TODO:过滤某个中断，哪个核心最多
+    top = option.top
+    # cpus = option.cpus
+    # fitler = option.filter
+    # all = option.all
+    # cpu_cnt = cpu_count()
     while count != 0:
         count -= 1
         time.sleep(interval)
+        now_ints = interrupt.get()
+        delta_ints = now_ints.sub(last_ints)
+        last_ints = now_ints
+        if top > 0:
+            interrupt.show_top(top, interval, logger, delta_ints)
+            continue
 
 
 def main():

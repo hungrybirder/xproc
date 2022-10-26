@@ -1,3 +1,4 @@
+import os
 import itertools
 
 
@@ -12,3 +13,10 @@ def grouper(size: int, iterable):    # Copy from stackoverflow
 
 def open_file(path: str, mode: str = "r"):
     return open(path, mode=mode, encoding="utf-8")
+
+
+def cpu_count() -> int:
+    cnt = os.cpu_count()
+    if cnt:
+        return cnt
+    return -1
