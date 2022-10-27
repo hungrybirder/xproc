@@ -43,7 +43,7 @@ class IntStat(NamedTuple):
     def sub(self, other: "IntStat", period_secs: float = 1):
         # 计算出每个cpu的平均值
         n_cpus = []
-        for a_cpu, b_cpu in zip(self.cpus, other.cpus, strict=True):
+        for a_cpu, b_cpu in zip(self.cpus, other.cpus):
             avg = int((a_cpu - b_cpu) // period_secs)
             n_cpus.append(avg)
         n_total = self.total - other.total
@@ -66,7 +66,7 @@ class Interrupts(NamedTuple):
         delta_stats: List[IntStat] = []
         delta_err = self.err - other.err
         delta_mis = self.mis - other.mis
-        for src, dst in zip(self.stats, other.stats, strict=True):
+        for src, dst in zip(self.stats, other.stats):
             delta_stats.append(src.sub(dst, delta_ts_secs))
         return Interrupts(total_int=delta_total_int,
                           stats=delta_stats,

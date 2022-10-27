@@ -1,6 +1,10 @@
+# 1.4.1
+
+1.  Fix zip strict argument issue
+
 # 1.4.0
 
-1. Support show top interrupts
+1.  Support show top interrupts
 
 # 1.3.1
 
