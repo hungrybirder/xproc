@@ -23,3 +23,8 @@ tags
 docs/_build
 .env
 .envrc
+
+
+# Added by cargo
+
+/target

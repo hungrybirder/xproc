@@ -1,0 +1,16 @@
+[package]
+name = "xproc"
+version = "1.0.0"
+edition = "2021"
+authors = ["liyong <hungrybirder@gmail.com>"]
+homepage = "https://github.com/hungrybirder/xproc"
+repository = "https://github.com/hungrybirder/xproc"
+documentation = "https://docs.rs/xproc"
+license = "MIT"
+
+[[bin]]
+name = "xproc-irq"
+path = "src/irq.rs"
+
+[dependencies]
+clap = { version = "4.0.18", features = ["derive"] }
