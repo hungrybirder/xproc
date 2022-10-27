@@ -5,9 +5,9 @@ import logging
 import signal
 from pkg_resources import get_distribution
 
-from xproc import meminfo, vmstat, load, interrupt
-from xproc.interrupt import Interrupts
-from xproc.util import grouper, cpu_count
+from xproc import meminfo, vmstat, load, irq
+from xproc.irq import Interrupts
+from xproc.util import grouper
 
 logger = logging.getLogger("xproc.console")
 
@@ -36,7 +36,7 @@ _CMD_PS = ["process", "ps"]
 _CMD_VER = ["version"]
 _CMD_LOAD = ["load"]
 # _CMD_SLABINFO = ["slabinfo"]
-_CMD_INTERRUPT = ["interrupt", "int"]
+_CMD_INTERRUPT = ["int", "irq"]
 
 
 def _add_ps_parser(sub_parsers):
@@ -84,8 +84,8 @@ def _add_load_parser(sub_parsers):
     load_parser.add_argument("count", nargs='?', default=-1, type=int)
 
 
-def _add_int_parser(sub_parsers):
-    int_parser = sub_parsers.add_parser("interrupt",
+def _add_irq_parser(sub_parsers):
+    int_parser = sub_parsers.add_parser("irq",
                                         aliases=["int"],
                                         help="interrupt subcommand")
     int_parser.add_argument("-a",
@@ -144,7 +144,7 @@ def parse_argv() -> argparse.Namespace:
     _add_mem_parser(sub_parsers)
     _add_vmstat_parser(sub_parsers)
     _add_load_parser(sub_parsers)
-    _add_int_parser(sub_parsers)
+    _add_irq_parser(sub_parsers)
     try:
         parsed = argv.parse_args()
     except Exception:
@@ -271,7 +271,7 @@ def show_load(option: argparse.Namespace):
 #     slab_info = slabinfo.current_slabinfo()
 
 
-def list_int_label(ints: Interrupts):
+def list_irq_label(ints: Interrupts):
     title = [f"{'LABEL':>10s}", f"{'NAME':>50s}"]
     logger.info(" ".join(title))
     title = [f"{'-----':>10s}", f"{'----':>50s}"]
@@ -281,11 +281,11 @@ def list_int_label(ints: Interrupts):
         logger.info(" ".join(data))
 
 
-def show_interrupt(option: argparse.Namespace):
+def show_irq(option: argparse.Namespace):
     logger.debug("%s", option)
-    last_ints = interrupt.get()
+    last_irqs = irq.get()
     if option.list:
-        return list_int_label(last_ints)
+        return list_irq_label(last_irqs)
     count = option.count
     interval = max(option.interval, 1)
     # TODO: top > filter == cpus > all ? 合理吗
@@ -300,11 +300,11 @@ def show_interrupt(option: argparse.Namespace):
     while count != 0:
         count -= 1
         time.sleep(interval)
-        now_ints = interrupt.get()
-        delta_ints = now_ints.sub(last_ints)
-        last_ints = now_ints
+        now_irqs = irq.get()
+        delta_irqs = now_irqs.sub(last_irqs)
+        last_irqs = now_irqs
         if top > 0:
-            interrupt.show_top(top, interval, logger, delta_ints)
+            irq.show_top(top, interval, logger, delta_irqs)
             continue
 
 
@@ -324,6 +324,6 @@ def main():
     elif command in _CMD_LOAD:
         show_load(namespace)
     elif command in _CMD_INTERRUPT:
-        show_interrupt(namespace)
+        show_irq(namespace)
     # elif command in _CMD_SLABINFO:
     #     show_slabinfo(namespace)
